@@ -841,7 +841,7 @@ struct req_info {
   XMLArgs args;
   map<string, string> x_meta_map;
 
-  const char *host;
+  string host;
   const char *method;
   string script_uri;
   string request_uri;
