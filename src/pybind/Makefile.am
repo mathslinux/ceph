@@ -20,8 +20,18 @@ pybind-clean:
 	--verbose
 
 pybind-install-exec:
+	if test "$(DESTDIR)" ; then \
+		if lsb_release -si | grep --quiet 'Ubuntu\|Debian\|Devuan' ; then \
+			options=--install-layout=deb ; \
+		else \
+			options=--prefix=/usr ; \
+		fi ; \
+		root="--root=$(DESTDIR)" ; \
+	else ; \
+		options=--prefix=$(prefix) \
+	fi ; \
 	cd $(srcdir)/pybind; $(PY_DISTUTILS) install \
-	--prefix $(DESTDIR)$(prefix) \
+	$$options $$root \
 	--single-version-externally-managed \
 	--record $(DESTDIR)$(pythondir)/rbd_install_files.txt \
 	--verbose
