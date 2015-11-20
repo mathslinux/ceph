@@ -27,8 +27,8 @@ pybind-install-exec:
 			options=--prefix=/usr ; \
 		fi ; \
 		root="--root=$(DESTDIR)" ; \
-	else ; \
-		options=--prefix=$(prefix) \
+	else \
+		options=--prefix=$(prefix) ; \
 	fi ; \
 	cd $(srcdir)/pybind; $(PY_DISTUTILS) install \
 	$$options $$root \
