@@ -1,6 +1,7 @@
 if ENABLE_CLIENT
 if WITH_RADOS
 if WITH_RBD
+if WITH_CYTHON
 
 PY_DISTUTILS = \
 	VERSION_RELEASE="@PACKAGE_VERSION@" \
@@ -40,6 +41,7 @@ LOCAL_ALL += pybind-all
 LOCAL_CLEAN += pybind-clean
 LOCAL_INSTALLEXEC += pybind-install-exec
 
+endif
 endif
 endif
 endif
