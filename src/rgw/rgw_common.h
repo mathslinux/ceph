@@ -414,6 +414,7 @@ public:
      DECODE_FINISH(bl);
   }
   int check_cap(const string& cap, uint32_t perm);
+  bool is_valid_cap_type(const string& tp);
   void dump(Formatter *f) const;
   void dump(Formatter *f, const char *name) const;
 
