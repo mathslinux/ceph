@@ -36,7 +36,9 @@ public:
   }
 
   virtual ~RWLock() {
-    pthread_rwlock_unlock(&L);
+    // The following check is racy but we are about to destroy
+    // the object and we assume that there are no other users.
+    //assert(!is_locked()); -- hacky backport, no is_locked in firefly
     pthread_rwlock_destroy(&L);
   }
 
