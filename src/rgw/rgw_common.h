@@ -178,6 +178,7 @@ enum {
 extern int gen_rand_base64(CephContext *cct, char *dest, int size);
 extern int gen_rand_alphanumeric(CephContext *cct, char *dest, int size);
 extern int gen_rand_alphanumeric_upper(CephContext *cct, char *dest, int size);
+extern int gen_rand_alphanumeric_plain(CephContext *cct, char *dest, int size);
 
 enum RGWIntentEvent {
   DEL_OBJ = 0,
