@@ -775,7 +775,19 @@ int RGWBucket::policy_bl_to_stream(bufferlist& bl, ostream& o)
   return 0;
 }
 
-int RGWBucket::get_policy(RGWBucketAdminOpState& op_state, ostream& o)
+static int policy_decode(bufferlist& bl, RGWAccessControlPolicy& policy)
+{
+  bufferlist::iterator iter = bl.begin();
+  try {
+    policy.decode(iter);
+  } catch (buffer::error& err) {
+    dout(0) << "ERROR: caught buffer::error, could not decode policy" << dendl;
+    return -EIO;
+  }
+  return 0;
+}
+
+int RGWBucket::get_policy(RGWBucketAdminOpState& op_state, RGWAccessControlPolicy& policy)
 {
   std::string object_name = op_state.get_object_name();
   rgw_bucket bucket = op_state.get_bucket();
@@ -787,7 +799,7 @@ int RGWBucket::get_policy(RGWBucketAdminOpState& op_state, ostream& o)
     if (ret < 0)
       return ret;
 
-    return policy_bl_to_stream(bl, o);
+    return policy_decode(bl, policy);
   }
 
 
@@ -803,12 +815,12 @@ int RGWBucket::get_policy(RGWBucketAdminOpState& op_state, ostream& o)
     return -ENOENT;
   }
 
-  return policy_bl_to_stream(aiter->second, o);
+  return policy_decode(aiter->second, policy);  
 }
 
 
 int RGWBucketAdminOp::get_policy(RGWRados *store, RGWBucketAdminOpState& op_state,
-                  ostream& os)
+                  RGWAccessControlPolicy& policy)
 {
    RGWBucket bucket;
 
@@ -816,7 +828,7 @@ int RGWBucketAdminOp::get_policy(RGWRados *store, RGWBucketAdminOpState& op_stat
   if (ret < 0)
     return ret;
 
-  ret = bucket.get_policy(op_state, os);
+  ret = bucket.get_policy(op_state, policy);
   if (ret < 0)
     return ret;
 
@@ -829,9 +841,9 @@ int RGWBucketAdminOp::get_policy(RGWRados *store, RGWBucketAdminOpState& op_stat
 int RGWBucketAdminOp::get_policy(RGWRados *store, RGWBucketAdminOpState& op_state,
                   RGWFormatterFlusher& flusher)
 {
-  std::ostringstream policy_stream;
+  RGWAccessControlPolicy policy(g_ceph_context);
 
-  int ret = get_policy(store, op_state, policy_stream);
+  int ret = get_policy(store, op_state, policy);
   if (ret < 0)
     return ret;
 
@@ -839,7 +851,7 @@ int RGWBucketAdminOp::get_policy(RGWRados *store, RGWBucketAdminOpState& op_stat
 
   flusher.start(0);
 
-  formatter->dump_string("policy", policy_stream.str());
+  policy.dump(formatter);
 
   flusher.flush();
 
