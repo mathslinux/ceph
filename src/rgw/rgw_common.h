@@ -841,12 +841,13 @@ struct req_info {
   XMLArgs args;
   map<string, string> x_meta_map;
 
-  const char *host;
+  string host;
   const char *method;
   string script_uri;
   string request_uri;
   string effective_uri;
   string request_params;
+  string domain;
 
   req_info(CephContext *cct, RGWEnv *_env);
   void rebuild_from(req_info& src);
