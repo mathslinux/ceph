@@ -940,7 +940,7 @@ int RGWAccessKeyPool::modify_key(RGWUserAdminOpState& op_state, std::string *err
 
   if (key.empty()) {
       set_err_msg(err_msg, "empty secret key");
-      return  -EINVAL;
+      return -ERR_INVALID_SECRET_KEY;
   }
 
   // update the access key with the new secret key
