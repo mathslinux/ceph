@@ -140,6 +140,7 @@ using ceph::crypto::MD5;
 #define ERR_MALFORMED_XML        2029
 #define ERR_USER_EXIST           2030
 #define ERR_EMAIL_EXIST          2032
+#define ERR_KEY_EXIST            2033
 #define ERR_USER_SUSPENDED       2100
 #define ERR_INTERNAL_ERROR       2200
 
