@@ -2387,12 +2387,10 @@ public:
     RGWUserInfo info;
 
     try {
-      decode_json_obj(uci, obj);
+      decode_json_obj(info, obj);
     } catch (JSONDecoder::err& e) {
       return -EINVAL;
     }
-
-    decode_json_obj(info, obj);
 
     RGWUserInfo old_info;
     time_t orig_mtime;
