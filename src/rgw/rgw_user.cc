@@ -784,7 +784,7 @@ int RGWAccessKeyPool::generate_key(RGWUserAdminOpState& op_state, std::string *e
 
   if (op_state.has_existing_key()) {
     set_err_msg(err_msg, "cannot create existing key");
-    return -EEXIST;
+    return -ERR_KEY_EXIST;
   }
 
   if (!gen_access) {
@@ -796,13 +796,13 @@ int RGWAccessKeyPool::generate_key(RGWUserAdminOpState& op_state, std::string *e
     case KEY_TYPE_SWIFT:
       if (rgw_get_user_info_by_swift(store, id, duplicate_check) >= 0) {
         set_err_msg(err_msg, "existing swift key in RGW system:" + id);
-        return -EEXIST;
+        return -ERR_KEY_EXIST;
       }
       break;
     case KEY_TYPE_S3:
       if (rgw_get_user_info_by_access_key(store, id, duplicate_check) >= 0) {
         set_err_msg(err_msg, "existing S3 key in RGW system:" + id);
-        return -EEXIST;
+        return -ERR_KEY_EXIST;
       }
     }
   }
@@ -855,7 +855,7 @@ int RGWAccessKeyPool::generate_key(RGWUserAdminOpState& op_state, std::string *e
     // check that the access key doesn't exist
     if (rgw_get_user_info_by_swift(store, id, duplicate_check) >= 0) {
       set_err_msg(err_msg, "cannot create existing swift key");
-      return -EEXIST;
+      return -ERR_KEY_EXIST;
     }
   }
 
@@ -904,7 +904,7 @@ int RGWAccessKeyPool::modify_key(RGWUserAdminOpState& op_state, std::string *err
     break;
   default:
     set_err_msg(err_msg, "invalid key type");
-    return -EINVAL;
+    return -ERR_INVALID_KEY_TYPE;
   }
 
   if (!op_state.has_existing_key()) {
@@ -940,7 +940,7 @@ int RGWAccessKeyPool::modify_key(RGWUserAdminOpState& op_state, std::string *err
 
   if (key.empty()) {
       set_err_msg(err_msg, "empty secret key");
-      return  -EINVAL;
+      return -ERR_INVALID_SECRET_KEY;
   }
 
   // update the access key with the new secret key
@@ -1401,7 +1401,7 @@ int RGWUserCapPool::init(RGWUserAdminOpState& op_state)
   caps = op_state.get_caps_obj();
   if (!caps) {
     caps_allowed = false;
-    return -EINVAL;
+    return -ERR_INVALID_CAP;
   }
 
   caps_allowed = true;
@@ -1431,7 +1431,7 @@ int RGWUserCapPool::add(RGWUserAdminOpState& op_state, std::string *err_msg, boo
 
   if (caps_str.empty()) {
     set_err_msg(err_msg, "empty user caps");
-    return -EINVAL;
+    return -ERR_INVALID_CAP;
   }
 
   int r = caps->add_from_string(caps_str);
@@ -1472,7 +1472,7 @@ int RGWUserCapPool::remove(RGWUserAdminOpState& op_state, std::string *err_msg, 
 
   if (caps_str.empty()) {
     set_err_msg(err_msg, "empty user caps");
-    return -EINVAL;
+    return -ERR_INVALID_CAP;
   }
 
   int r = caps->remove_from_string(caps_str);
@@ -1567,18 +1567,23 @@ int RGWUser::init(RGWUserAdminOpState& op_state)
     }
   }
 
-  if (!uid.empty() && (uid.compare(RGW_USER_ANON_ID) != 0))
+  if (!uid.empty() && (uid.compare(RGW_USER_ANON_ID) != 0)) {
     found = (rgw_get_user_info_by_uid(store, uid, user_info, &op_state.objv) >= 0);
-
-  if (!user_email.empty() && !found)
+    op_state.found_by_uid = found;
+  }
+  if (!user_email.empty() && !found) {
     found = (rgw_get_user_info_by_email(store, user_email, user_info, &op_state.objv) >= 0);
-
-  if (!swift_user.empty() && !found)
+    op_state.found_by_email = found;
+  }
+  if (!swift_user.empty() && !found) {
     found = (rgw_get_user_info_by_swift(store, swift_user, user_info, &op_state.objv) >= 0);
-
-  if (!access_key.empty() && !found)
+    op_state.found_by_key = found;
+  }
+  if (!access_key.empty() && !found) {
     found = (rgw_get_user_info_by_access_key(store, access_key, user_info, &op_state.objv) >= 0);
-
+    op_state.found_by_key = found;
+  }
+  
   op_state.set_existing_user(found);
   if (found) {
     op_state.set_user_info(user_info);
@@ -1703,9 +1708,17 @@ int RGWUser::execute_add(RGWUserAdminOpState& op_state, std::string *err_msg)
       return execute_modify(op_state, err_msg);
     }
 
-    set_err_msg(err_msg, "user: " + op_state.user_id + " exists");
-
-    return -EEXIST;
+    if (op_state.found_by_email) {
+      set_err_msg(err_msg, "email: " + user_email + " exists");
+      ret = -ERR_EMAIL_EXIST;
+    } else if (op_state.found_by_key) {
+      set_err_msg(err_msg, "duplicate key provided");
+      ret = -ERR_KEY_EXIST;
+    } else {
+      set_err_msg(err_msg, "user: " + op_state.user_id + " exists");
+      ret = -EEXIST;
+    }
+    return ret;
   }
 
   // fail if the user_info has already been populated
@@ -1720,12 +1733,7 @@ int RGWUser::execute_add(RGWUserAdminOpState& op_state, std::string *err_msg)
     return -EINVAL;
   }
 
-  // fail if the user email is a duplicate
-  if (op_state.has_existing_email()) {
-    set_err_msg(err_msg, "duplicate email provided");
-    return -EEXIST;
-  }
-
+		
   // set the user info
   user_id = uid;
   user_info.user_id = user_id;
@@ -1932,7 +1940,7 @@ int RGWUser::execute_modify(RGWUserAdminOpState& op_state, std::string *err_msg)
       ret = rgw_get_user_info_by_email(store, op_email, duplicate_check);
       if (ret >= 0 && duplicate_check.user_id != user_id) {
         set_err_msg(err_msg, "cannot add duplicate email");
-        return -EEXIST;
+        return -ERR_EMAIL_EXIST;
       }
     }
     user_info.user_email = op_email;
@@ -2115,8 +2123,11 @@ int RGWUserAdminOp_User::create(RGWRados *store, RGWUserAdminOpState& op_state,
   Formatter *formatter = flusher.get_formatter();
 
   ret = user.add(op_state, NULL);
-  if (ret < 0)
+  if (ret < 0) {
+    if (ret == -EEXIST)
+      ret = -ERR_USER_EXIST;
     return ret;
+  }
 
   ret = user.info(info, NULL);
   if (ret < 0)

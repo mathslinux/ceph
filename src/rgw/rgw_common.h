@@ -135,6 +135,15 @@ using ceph::crypto::MD5;
 #define ERR_PERMANENT_REDIRECT   2024
 #define ERR_LOCKED               2025
 #define ERR_QUOTA_EXCEEDED       2026
+#define ERR_SIGNATURE_NO_MATCH   2027
+#define ERR_INVALID_ACCESS_KEY   2028
+#define ERR_MALFORMED_XML        2029
+#define ERR_USER_EXIST           2030
+#define ERR_EMAIL_EXIST          2032
+#define ERR_KEY_EXIST            2033
+#define ERR_INVALID_SECRET_KEY   2034
+#define ERR_INVALID_KEY_TYPE     2035
+#define ERR_INVALID_CAP          2036
 #define ERR_USER_SUSPENDED       2100
 #define ERR_INTERNAL_ERROR       2200
 
@@ -406,6 +415,7 @@ public:
      DECODE_FINISH(bl);
   }
   int check_cap(const string& cap, uint32_t perm);
+  bool is_valid_cap_type(const string& tp);
   void dump(Formatter *f) const;
   void dump(Formatter *f, const char *name) const;
 
