@@ -840,6 +840,13 @@ struct RGWStorageStats
   RGWStorageStats() : category(RGW_OBJ_CATEGORY_NONE), num_kb(0), num_kb_rounded(0), num_objects(0) {}
 };
 
+typedef struct CDNMessage {
+  string key;
+  string type;
+  string op;
+  time_t time;
+} CDNMessage;
+
 struct req_state;
 
 class RGWEnv;

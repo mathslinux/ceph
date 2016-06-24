@@ -54,6 +54,7 @@
 #include "rgw_resolve.h"
 #include "rgw_loadgen.h"
 #include "rgw_civetweb.h"
+#include "rgw_cdn.h"
 
 #include "civetweb/civetweb.h"
 
@@ -618,6 +619,11 @@ done:
 
   dout(1) << "====== req done req=" << hex << req << dec << " http_status=" << http_ret << " ======" << dendl;
 
+    // TODO: add a config entry?
+  if (ret >= 0 && s->err.ret >= 0) {
+      rgw_cdn_publish(s, (op ? op->name() : "unknown"));
+  }
+
   return (ret < 0 ? ret : s->err.ret);
 }
 
@@ -1024,6 +1030,7 @@ int main(int argc, const char **argv)
   rgw_user_init(store->meta_mgr);
   rgw_bucket_init(store->meta_mgr);
   rgw_log_usage_init(g_ceph_context, store);
+  rgw_cdn_init(g_ceph_context);
 
   RGWREST rest;
 
@@ -1182,6 +1189,7 @@ int main(int argc, const char **argv)
     swift_finalize();
   }
 
+  rgw_cdn_finalize();
   rgw_log_usage_finalize();
 
   delete olog;
