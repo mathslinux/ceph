@@ -17,7 +17,7 @@ class CDNPublisher
   Mutex lock;
   Cond cond;
   atomic_t down_flag;
-  std::queue<CDNMessage> msg_queue;	// use map instead?
+  std::queue<CDNMessage *> msg_queue;	// use map instead?
   class PublisherWorker : public Thread {
     CephContext *cct;
     CDNPublisher *publisher;
@@ -40,7 +40,8 @@ public:
     worker->join();
     delete worker;
   }
-  void enqueue(CDNMessage &msg);
+  void enqueue(CDNMessage *msg);
+  CDNMessage *dequeue();
   bool going_down();
 };
 
