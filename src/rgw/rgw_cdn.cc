@@ -67,10 +67,9 @@ void *CDNPublisher::PublisherWorker::entry()
     if (msg) {
       // TODO: flush every 1000 msg?
       // TODO: if push failed?
-      string cmd;
-      cmd.append("hset %s %s");
+      // TODO: wrap fun in struct CDNMessage
+      rclient->push("HMSET %s type:%s op:%s time:%ld", msg->key.c_str(), msg->type.c_str(), msg->op.c_str(), msg->time);
       delete msg;
-      rclient->push(cmd);
       msg = NULL;
       continue;
     }

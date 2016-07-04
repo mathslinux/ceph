@@ -13,13 +13,15 @@ class RedisClient {
   uint port;
   redisContext *rct;
   uint timeout;
+  uint cmd_len;
 public:
-  RedisClient(string &_url) : url(_url), port(6379), rct(NULL), timeout(3) {}
+  RedisClient(string &_url) : url(_url), port(6379), rct(NULL), timeout(3), cmd_len(0) {}
   ~RedisClient();
   bool connect();
   void disconnect();
   bool push(string &cmd);
-  bool flush();
+  bool push(const char *fmt, ...);
+  void flush();
 };
 
 #endif
