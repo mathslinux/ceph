@@ -85,24 +85,27 @@ void *CDNPublisher::PublisherWorker::entry()
     // TODO: log error
     return NULL;
   }
-  lock.Lock();
   while(!cdn_publisher->going_down()) {
+    lock.Lock();
     msg = publisher->dequeue();
     lock.Unlock();
     if (msg) {
       // TODO: flush every 1000 msg?
       // TODO: if push failed?
       // TODO: wrap fun in struct CDNMessage
-      rclient->push("HMSET %s type:%s op:%s time:%ld", msg->key.c_str(), msg->type.c_str(), msg->op.c_str(), msg->time);
+      dout(3) << "push msg(" << msg->key << ") to redis server" << dendl;
+      rclient->push("HMSET %s type %s op %s time %ld", msg->key.c_str(), msg->type.c_str(), msg->op.c_str(), msg->time);
       delete msg;
       msg = NULL;
       continue;
     }
+    dout(3) << "begin flush msgs" << dendl;
     rclient->flush();
+    dout(3) << "end flush msgs" << dendl;
     lock.Lock();
     cond.WaitInterval(cct, lock, utime_t(2, 0));
+    lock.Unlock();
   }
-  lock.Unlock();
 
   // TODO: log info
   rclient->disconnect();
