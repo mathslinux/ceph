@@ -609,6 +609,11 @@ done:
     rgw_log_op(store, s, (op ? op->name() : "unknown"), olog);
   }
 
+  // TODO: add a config entry?
+  if (ret >= 0 && s->err.ret >= 0) {
+      rgw_cdn_publish(s, (op ? op->name() : "unknown"));
+  }
+
   int http_ret = s->err.http_ret;
 
   req->log_format(s, "http status=%d", http_ret);
@@ -618,11 +623,6 @@ done:
   rest->put_handler(handler);
 
   dout(1) << "====== req done req=" << hex << req << dec << " http_status=" << http_ret << " ======" << dendl;
-
-    // TODO: add a config entry?
-  if (ret >= 0 && s->err.ret >= 0) {
-      rgw_cdn_publish(s, (op ? op->name() : "unknown"));
-  }
 
   return (ret < 0 ? ret : s->err.ret);
 }
