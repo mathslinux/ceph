@@ -16,6 +16,8 @@ using namespace std;
 #include "rgw_cdn.h"
 #include "rgw_redis.h"
 
+#define dout_subsys ceph_subsys_rgw
+
 static CDNPublisher *cdn_publisher = NULL;
 
 void CDNPublisher::enqueue(CDNMessage *msg)
@@ -24,6 +26,7 @@ void CDNPublisher::enqueue(CDNMessage *msg)
   lock.Lock();
   msg_queue.push(msg);
   cond.Signal();
+  dout(1) << "push msg(" << msg->key << ") to queue" << dendl;
   lock.Unlock();
 }
 
@@ -98,12 +101,24 @@ void rgw_cdn_finalize()
 
 static bool op_need_publish(const string& op_name)
 {
-  return true;
+  // TODO: COPY obj ?
+  if (op_name == "put_obj" ||
+      op_name == "complete_multipart" ||
+      op_name == "delete_obj" ||
+      op_name == "delete_bucket" ||
+      op_name == "copy_obj")  {
+    return true;
+  } else {
+    return false;
+  }
 }
 
 static void set_msg(struct req_state *s, const string& op_name, CDNMessage *msg)
 {
-  if (op_name == "put_obj" || op_name == "complete_multipart" || op_name == "delete_obj") {
+  if (op_name == "put_obj" ||
+      op_name == "complete_multipart" ||
+      op_name == "delete_obj" ||
+      op_name == "copy_obj") {
     msg->key = s->bucket.name;
     msg->key.append(":");
     msg->key.append(s->object_str);
