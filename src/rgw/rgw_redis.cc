@@ -22,7 +22,7 @@ bool RedisClient::connect()
   rct = redisConnectWithTimeout(url.c_str(), port, tv);
   if ( (NULL == rct) || (rct->err) ) {
     if (rct) {
-      dout(0) << "ERROR: failed to connect redis server: " << rct->errstr << dendl;
+      dout(0) << "ERROR: failed to connect redis server(" << url << "): " << rct->errstr << dendl;
     }
     else {
       dout(0) << "ERROR: failed to alloc redis contect" << dendl;
@@ -61,8 +61,8 @@ bool RedisClient::push(const char *fmt, ...)
   ret = redisvAppendCommand(rct, fmt, args);
   va_end(args);
   // if failed to append, cmd_len++?
-  cmd_len++;
   if (ret == REDIS_OK) {
+    cmd_len++;
     return true;
   } else {
     // TODO: log error
@@ -74,11 +74,15 @@ bool RedisClient::push(const char *fmt, ...)
 void RedisClient::flush()
 {
   redisReply* reply = NULL;
-  while (cmd_len--) {
+  // NOTE: flush() can be called if and only if there are commands appended, 
+  // otherwise flush will block this thread!
+  while (cmd_len > 0) {
     if (redisGetReply(rct, (void **)&reply) == REDIS_OK) {
       if (reply) {
+	dout(5) << "get redis reply: " << reply->str << dendl;
 	freeReplyObject(reply);
 	reply = NULL;
+	cmd_len--;
       }
     } else {
       // TODO: log error
