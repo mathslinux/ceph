@@ -13,6 +13,9 @@
 
 using namespace std;
 
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/ini_parser.hpp>
+
 #include "rgw_cdn.h"
 #include "rgw_redis.h"
 
@@ -30,17 +33,16 @@ void CDNPublisher::enqueue(CDNMessage *msg)
   lock.Unlock();
 }
 
+// Do not need to lock/unlock, since we have only on lock for msg_queue 
+// and thread signal and caller has lock it before calling
 CDNMessage *CDNPublisher::dequeue()
 {
   // TODO: DEBUG
-  lock.Lock();
   if (msg_queue.empty()) {
-    lock.Unlock();
     return NULL;
   }
   CDNMessage *msg = msg_queue.front();
   msg_queue.pop();
-  lock.Unlock();
   return msg;
 }
 
@@ -49,15 +51,35 @@ bool CDNPublisher::going_down()
   return (down_flag.read() != 0);
 }
 
+static string parse_redis_url()
+{
+  // FIXME: hack filepath
+  string conf = "/etc/ceph/eayunobs.conf";
+  string redis_url_key = "redis.url";
+
+  try {
+    boost::property_tree::ptree pt;
+    boost::property_tree::ini_parser::read_ini(conf, pt);
+    return pt.get<std::string>(redis_url_key);
+  } catch (std::exception const &e) {
+    dout(1) << "ERROR: failed to parse redis_url: " << e.what() << dendl;
+    return "";
+  }
+}
+
 void *CDNPublisher::PublisherWorker::entry()
 {
   // TODO: url from config
-  string url = "x.x.x.x";
-  RedisClient *rclient = new RedisClient(url);
+  RedisClient *rclient = NULL;
   CDNMessage *msg;
   Mutex& lock = publisher->lock;
   Cond& cond = publisher->cond;
 
+  string url = parse_redis_url();
+  if (url.empty()) {
+    return NULL;
+  }
+  rclient = new RedisClient(url);
   bool ret = rclient->connect();
   if (!ret) {
     // TODO: log error
@@ -139,10 +161,10 @@ static void set_msg(struct req_state *s, const string& op_name, CDNMessage *msg)
 
 void rgw_cdn_publish(struct req_state *s, const string& op_name)
 {
-    if (op_need_publish(op_name)) {
-      // TODO: warp msg
-      CDNMessage *msg = new CDNMessage;
-      set_msg(s, op_name, msg);
-      cdn_publisher->enqueue(msg);
+  if (op_need_publish(op_name)) {
+    // TODO: warp msg
+    CDNMessage *msg = new CDNMessage;
+    set_msg(s, op_name, msg);
+    cdn_publisher->enqueue(msg);
   }
 }
